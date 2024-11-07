@@ -1,69 +1,57 @@
 import mysql.connector
+from mysql.connector import Error
 
 
+# Conectar a la base de datos
 def conectar():
     try:
         conexion = mysql.connector.connect(
             host="localhost",
             user="root",
             password="sistemas",
-            database="finaldiscreta"
+            database="fdiscreta"
         )
-        print("Connected to the database successfully")
-        return conexion
-    except mysql.connector.Error as err:
+
+        if conexion.is_connected():
+            print("Connected to the database successfully")
+            return conexion
+
+    except Error as err:
         print(f"Failed to connect to the database: {err}")
         return None
 
 
-# Método para obtener las amistades
+# Cerrar la conexión a la base de datos
+def cerrar_conexion(conexion):
+    if conexion and conexion.is_connected():
+        conexion.close()
+        print("Connection closed successfully")
+
+
+# Obtener las amistades desde la base de datos
 def obtener_amistades(conexion):
     try:
-        with conexion.cursor() as cursor:
-            # Consulta para obtener las amistades
-            query = """
-            SELECT u1.nombre, u2.nombre 
-            FROM Amistades a
-            JOIN Usuarios u1 ON a.id_usuario1 = u1.id
-            JOIN Usuarios u2 ON a.id_usuario2 = u2.id
-            """
-            cursor.execute(query)
-            amistades = cursor.fetchall()
-            return amistades
-    except mysql.connector.Error as err:
-        print(f"Error fetching friendships: {err}")
-        return None
+        cursor = conexion.cursor()
+        cursor.execute("SELECT id_usuario1, id_usuario2 FROM amistades")
+        amistades = cursor.fetchall()
+        return amistades
+    except Error as err:
+        print(f"Error fetching amistades: {err}")
+        return []
+    finally:
+        cursor.close()
 
 
-# Método para obtener los usuarios
-def obtener_usuarios(conexion):
+# Función para obtener los nombres de los usuarios desde la base de datos
+def obtener_nombres_usuarios(conexion):
     try:
-        with conexion.cursor() as cursor:
-            # Consulta para obtener todos los usuarios
-            query = "SELECT * FROM Usuarios"
-            cursor.execute(query)
-            usuarios = cursor.fetchall()
-            return usuarios
-    except mysql.connector.Error as err:
-        print(f"Error fetching users: {err}")
-        return None
-
-
-# Ejemplo de uso:
-conexion = conectar()
-
-if conexion:
-    # Ver amistades en consola
-    amistades = obtener_amistades(conexion)
-    if amistades:
-        print("Amistades:", amistades)
-
-    # Ver usuarios en consola
-    usuarios = obtener_usuarios(conexion)
-    if usuarios:
-        print("Usuarios:", usuarios)
-
-    # Cerrar la conexión después de usarla
-    conexion.close()
-else:
-    print("No se pudo establecer conexión a la base de datos")
+        cursor = conexion.cursor()
+        cursor.execute("SELECT id, nombre FROM Usuarios")
+        usuarios = cursor.fetchall()
+        # Crear un diccionario con id como clave y nombre como valor
+        return {usuario[0]: usuario[1] for usuario in usuarios}
+    except Error as err:
+        print(f"Error fetching user names: {err}")
+        return {}
+    finally:
+        cursor.close()

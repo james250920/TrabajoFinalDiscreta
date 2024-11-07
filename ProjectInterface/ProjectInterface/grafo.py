@@ -1,39 +1,50 @@
-import mysql.connector
+import networkx as nx
+import matplotlib.pyplot as plt
+from conexion import obtener_amistades, obtener_nombres_usuarios, conectar, cerrar_conexion
 
 
-def obtener_grafo():
-    # Conexión a la base de datos
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="sistemas",
-        database="finaldiscreta"
-    )
+def crear_grafo(amistades, conexion):
+    # Obtener los nombres de los usuarios desde la base de datos
+    usuarios = obtener_nombres_usuarios(conexion)
 
-    cursor = conn.cursor()
+    G = nx.Graph()
 
-    # Crear el diccionario (grafo) de adyacencia
-    grafo = {}
+    # Recorrer las amistades y agregar las relaciones al grafo
+    for usuario1, usuario2 in amistades:
+        nombre_usuario1 = usuarios.get(usuario1)
+        nombre_usuario2 = usuarios.get(usuario2)
 
-    # Obtener los nombres de los usuarios
-    cursor.execute("SELECT id, nombre FROM Usuarios")
-    usuarios = cursor.fetchall()  # Lista de tuplas (id, nombre)
+        if nombre_usuario1 and nombre_usuario2:
+            G.add_edge(nombre_usuario1, nombre_usuario2)
 
-    # Inicializar el grafo
-    for usuario in usuarios:
-        grafo[usuario[0]] = []  # Cada usuario tendrá una lista vacía de amigos
+    # Visualizar el grafo con Matplotlib
+    plt.figure(figsize=(10, 7))
+    pos = nx.spring_layout(G)  # Layout de los nodos
+    nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=2000, font_size=15, font_weight='bold',
+            edge_color='gray')
+    plt.title("Grafo de Usuarios y Amistades")
+    plt.show()
 
-    # Obtener las amistades
-    cursor.execute("SELECT id_usuario1, id_usuario2 FROM Amistades")
-    amistades = cursor.fetchall()  # Lista de tuplas (id_usuario1, id_usuario2)
+    return G
 
-    # Crear las conexiones en el grafo
-    for amistad in amistades:
-        id1, id2 = amistad
-        grafo[id1].append(id2)
-        grafo[id2].append(id1)
 
-    cursor.close()
-    conn.close()
+def main():
+    # Conectar a la base de datos
+    conexion = conectar()
 
-    return grafo, usuarios
+    if conexion:
+        # Obtener las amistades desde la base de datos
+        amistades = obtener_amistades(conexion)
+
+        if amistades:
+            # Crear el grafo a partir de las amistades obtenidas
+            crear_grafo(amistades, conexion)
+
+        # Cerrar la conexión a la base de datos
+        cerrar_conexion(conexion)
+    else:
+        print("No se pudo conectar a la base de datos")
+
+
+if __name__ == "__main__":
+    main()
